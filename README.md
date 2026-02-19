@@ -28,14 +28,14 @@ It runs **before** LinkedIn’s script and changes how `fetch` and `XMLHttpReque
 
 ## Quick install (no Git needed)
 
-1. Open **[this repository](REPO_URL)** on GitHub.
+1. Open **[this repository](https://github.com/mujtaba3B/linkedin-console-errors-chrome-temp-fix)** on GitHub.
 2. Click the green **Code** button → **Download ZIP**. Unzip the folder.
 3. In Chrome go to **chrome://extensions/**, turn **Developer mode** on (top right), click **Load unpacked**, and select the unzipped folder (the one that contains `manifest.json`).
 4. Reload LinkedIn. The console errors should stop.
 
 ## Detailed install (load unpacked)
 
-1. Download or clone [this repository](REPO_URL) so you have a folder with:
+1. Download or clone [this repository](https://github.com/mujtaba3B/linkedin-console-errors-chrome-temp-fix) so you have a folder with:
    - `manifest.json`
    - `content.js`
    - (optional) `README.md`
