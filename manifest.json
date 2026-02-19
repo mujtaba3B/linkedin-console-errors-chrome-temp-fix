@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn continuous console errors on Chrome (temp fix)",
+  "version": "1.0",
+  "description": "Stops LinkedIn's ~3000 chrome-extension:// probe requests. Fixes console spam and memory issues. No data collected.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/*",
+        "https://linkedin.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}

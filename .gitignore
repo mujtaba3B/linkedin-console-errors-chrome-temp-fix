@@ -1,0 +1,10 @@
+# Maintainer / AI context (not for end users)
+CONTEXT.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.idea/
+*.sublime-*
