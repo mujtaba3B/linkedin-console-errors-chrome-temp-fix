@@ -12,7 +12,8 @@
       ],
       "js": ["content.js"],
       "run_at": "document_start",
-      "world": "MAIN"
+      "world": "MAIN",
+      "all_frames": true
     }
   ]
 }
