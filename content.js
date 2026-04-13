@@ -17,23 +17,24 @@
  * WHAT DOES THIS EXTENSION DO?
  * ---------------------------
  * We run before LinkedIn's script and replace the built-in "fetch",
- * "XMLHttpRequest", and image "src" with our own versions. When LinkedIn's
- * script tries to fetch or load any URL that starts with "chrome-extension://",
- * we block it (no real network request). So:
+ * "XMLHttpRequest", "navigator.sendBeacon", and image "src" with our own
+ * versions. When LinkedIn's script tries to use any of these with a
+ * "chrome-extension://" URL, we silently return a fake successful response
+ * instead of making a real request. So:
  *
  *   - No thousands of real requests = no memory spike
- *   - No thousands of errors in the console
- *   - LinkedIn's script still runs; it just gets "failed" or no load for those probes
+ *   - No errors in the console at all
+ *   - LinkedIn's script still runs; it just gets a silent 200 OK for those probes
  *
- * LinkedIn probes via fetch/XHR on some pages and via Image (img.src) on others
- * (e.g. profile pages /in/). We block all of these.
+ * LinkedIn probes via fetch/XHR/sendBeacon on some pages and via Image
+ * (img.src) on others (e.g. profile pages /in/). We block all of these.
  *
  * We only block requests to chrome-extension:// URLs. All other requests
  * (your normal LinkedIn traffic, images, API calls) go through unchanged.
  *
  * PRIVACY: This extension does not collect, store, or send any data.
- * It only runs on LinkedIn and only changes how fetch/XHR/Image behave for
- * chrome-extension:// URLs.
+ * It only runs on LinkedIn and only changes how fetch/XHR/Image/sendBeacon
+ * behave for chrome-extension:// URLs.
  */
 
 (function () {
@@ -77,7 +78,7 @@
     return function (input, init) {
       var url = getUrlFromFetchInput(input);
       if (url && url.indexOf(BLOCKED_URL_PREFIX) === 0) {
-        return Promise.reject(new TypeError('Failed to fetch'));
+        return Promise.resolve(new Response('', { status: 200 }));
       }
       return fn.apply(this, arguments);
     };
@@ -106,19 +107,20 @@
   var realSend = RealXHR.prototype.send;
 
   RealXHR.prototype.open = function (method, url) {
-    // Store the URL on this request so we can check it in send().
-    this._requestUrl = url;
+    this._blockedByProbeFilter = (typeof url === 'string' && url.indexOf(BLOCKED_URL_PREFIX) === 0);
+    if (this._blockedByProbeFilter) return;
     return realOpen.apply(this, arguments);
   };
 
   RealXHR.prototype.send = function (body) {
-    // If this request is to a chrome-extension:// URL, abort it and don't send.
-    if (this._requestUrl && this._requestUrl.indexOf(BLOCKED_URL_PREFIX) === 0) {
-      this.abort();
+    if (this._blockedByProbeFilter) {
+      Object.defineProperty(this, 'readyState', { value: 4, configurable: true });
+      Object.defineProperty(this, 'status', { value: 200, configurable: true });
+      Object.defineProperty(this, 'responseText', { value: '', configurable: true });
+      this.dispatchEvent(new Event('readystatechange'));
+      this.dispatchEvent(new Event('load'));
       return;
     }
-
-    // For everything else, use the real send.
     return realSend.apply(this, arguments);
   };
 
@@ -144,5 +146,18 @@
       configurable: true,
       enumerable: true
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Override navigator.sendBeacon
+  // -------------------------------------------------------------------------
+  if (navigator.sendBeacon) {
+    var realSendBeacon = navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon = function (url, data) {
+      if (typeof url === 'string' && url.indexOf(BLOCKED_URL_PREFIX) === 0) {
+        return true;
+      }
+      return realSendBeacon(url, data);
+    };
   }
 })();
