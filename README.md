@@ -4,7 +4,7 @@ A tiny Chrome extension that stops LinkedIn’s “extension probing” from spa
 
 ## What’s the problem?
 
-LinkedIn’s site runs code that tries to detect which Chrome extensions you have. It does this by trying to load a file from **about 3000 known extension URLs**. For example:
+LinkedIn’s site runs code that tries to detect which Chrome extensions you have. It does this by trying to load a file from **a large set of extension URLs**. For example:
 
 ```
 chrome-extension://some-id/some-file.png
