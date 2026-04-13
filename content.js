@@ -53,6 +53,9 @@
     if (typeof input === 'string') {
       return input;
     }
+    if (input instanceof URL) {
+      return input.href;  // URL objects use .href
+    }
     if (input && typeof input.url === 'string') {
       return input.url;   // Request object has a .url property
     }
@@ -60,24 +63,37 @@
   }
 
   // -------------------------------------------------------------------------
-  // Override window.fetch
+  // Override window.fetch — persistent via defineProperty getter/setter
   // -------------------------------------------------------------------------
-  // Save the real fetch so we can call it for normal requests.
+  // Problem: LinkedIn's own interceptor overwrites window.fetch after we set it,
+  // which breaks our block. To survive that, we define a getter/setter on
+  // window.fetch so that whenever LinkedIn (or anyone) replaces window.fetch,
+  // our setter automatically re-wraps their new function with our check.
+  // This way the chrome-extension:// block is always in the call chain.
+
   var realFetch = window.fetch;
 
-  // Replace window.fetch with our version.
-  window.fetch = function (input, init) {
-    var url = getUrlFromFetchInput(input);
+  function wrapFetch(fn) {
+    return function (input, init) {
+      var url = getUrlFromFetchInput(input);
+      if (url && url.indexOf(BLOCKED_URL_PREFIX) === 0) {
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }
+      return fn.apply(this, arguments);
+    };
+  }
 
-    // If this is a request to a chrome-extension:// URL, don't actually do it.
-    // Just return a rejected promise so the caller gets "failed" immediately.
-    if (url && url.indexOf(BLOCKED_URL_PREFIX) === 0) {
-      return Promise.reject(new TypeError('Failed to fetch'));
-    }
+  var _currentFetch = wrapFetch(realFetch);
 
-    // For everything else, use the real fetch.
-    return realFetch.apply(this, arguments);
-  };
+  Object.defineProperty(window, 'fetch', {
+    get: function () { return _currentFetch; },
+    set: function (newFetch) {
+      // When LinkedIn overwrites window.fetch with its own interceptor,
+      // wrap that interceptor so our check still runs first.
+      _currentFetch = wrapFetch(newFetch);
+    },
+    configurable: false
+  });
 
   // -------------------------------------------------------------------------
   // Override XMLHttpRequest (same idea as fetch)
